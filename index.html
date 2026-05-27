@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <title>Encuesta - Educación Financiera</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: #061420;
+      min-height: 100vh;
+      color: #fff;
+      overflow-x: hidden;
+      -webkit-tap-highlight-color: transparent;
+    }
+    #btCanvas {
+      position: fixed; top: 0; left: 0;
+      width: 100%; height: 100%;
+      z-index: 0; pointer-events: none;
+    }
+    .container {
+      position: relative; z-index: 1;
+      max-width: 640px; margin: 0 auto;
+      padding: 28px 14px 60px;
+    }
+    header { text-align: center; margin-bottom: 24px; }
+    header h1 {
+      font-size: clamp(1.1rem, 4vw, 1.45rem);
+      font-weight: 700; color: #bde2ff;
+      text-shadow: 0 0 18px #7bb8ff, 0 0 36px #a58cff;
+      line-height: 1.3;
+    }
+    header p { font-size: 0.82rem; color: #c6bcff; margin-top: 6px; line-height: 1.5; }
+    .counter-badge {
+      display: inline-block;
+      background: rgba(120,190,255,0.14);
+      border: 1px solid rgba(167,140,255,0.4);
+      border-radius: 20px; padding: 4px 14px;
+      font-size: 0.78rem; color: #cfe6ff; margin-top: 10px;
+    }
+    .instrucciones {
+      background: rgba(70,130,200,0.18);
+      border: 1px solid rgba(160,150,255,0.32);
+      border-radius: 12px; padding: 14px 16px;
+      margin-bottom: 18px;
+      font-size: 0.83rem; color: #d3cdff; line-height: 1.6;
+    }
+    .instrucciones strong { color: #b9deff; }
+
+    /* ── Splash de instrucciones ── */
+    #splash {
+      position: fixed; inset: 0;
+      background: rgba(6,20,32,0.97);
+      z-index: 999;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      padding: 32px 24px;
+      cursor: pointer;
+      transition: opacity 0.4s, visibility 0.4s;
+    }
+    #splash.oculto {
+      opacity: 0; visibility: hidden; pointer-events: none;
+    }
+    #splash h2 {
+      font-size: clamp(1.1rem, 4vw, 1.4rem);
+      font-weight: 700; color: #bde2ff;
+      text-shadow: 0 0 18px #89c5ff;
+      text-align: center; margin-bottom: 20px;
+    }
+    #splash .inst-box {
+      background: rgba(70,130,200,0.2);
+      border: 1px solid rgba(160,150,255,0.35);
+      border-radius: 14px; padding: 20px 22px;
+      max-width: 560px; width: 100%;
+      font-size: 0.88rem; color: #d8d2ff; line-height: 1.7;
+      text-align: justify;
+    }
+    #splash .inst-box strong { color: #bee2ff; }
+    #splash .toque {
+      margin-top: 28px;
+      font-size: 0.82rem; color: #a9b8ff;
+      animation: parpadeo 1.5s ease-in-out infinite;
+    }
+    @keyframes parpadeo {
+      0%,100% { opacity: 1; } 50% { opacity: 0.3; }
+    }
+    .card {
+      background: rgba(75,140,210,0.14);
+      border: 1px solid rgba(160,150,255,0.28);
+      border-radius: 14px; padding: 16px;
+      margin-bottom: 14px;
+      backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+    }
+    .card label.question {
+      display: block; font-size: 0.9rem; font-weight: 600;
+      color: #d8d2ff; margin-bottom: 12px; line-height: 1.55;
+    }
+    .card label.question .num { color: #88c5ff; font-weight: 700; margin-right: 3px; }
+    textarea {
+      width: 100%; min-height: 90px;
+      background: rgba(0,0,0,0.3);
+      border: 1px solid rgba(160,150,255,0.35);
+      border-radius: 10px; color: #fff;
+      font-size: 0.9rem; padding: 10px 12px;
+      resize: vertical; outline: none;
+      transition: border 0.2s, box-shadow 0.2s; font-family: inherit;
+    }
+    textarea:focus { border-color: #7fb7ff; box-shadow: 0 0 10px rgba(127,183,255,0.35); }
+    .radio-group { display: flex; gap: 10px; }
+    .radio-group label {
+      flex: 1; display: flex; align-items: center; justify-content: center;
+      gap: 8px; background: rgba(0,0,0,0.25);
+      border: 1px solid rgba(160,150,255,0.25);
+      border-radius: 10px; padding: 13px 8px; cursor: pointer;
+      font-size: 0.95rem; color: #d8d2ff;
+      transition: background 0.18s, border 0.18s, box-shadow 0.18s; user-select: none;
+    }
+    .radio-group input[type="radio"] { accent-color: #7fb7ff; width: 17px; height: 17px; flex-shrink: 0; }
+    .radio-group label:has(input:checked) {
+      background: rgba(127,183,255,0.2); border-color: #a58cff;
+      color: #fff; box-shadow: 0 0 10px rgba(127,183,255,0.3);
+    }
+    .options-group { display: flex; flex-direction: column; gap: 9px; }
+    .options-group label {
+      display: flex; align-items: flex-start; gap: 10px;
+      background: rgba(0,0,0,0.25); border: 1px solid rgba(160,150,255,0.25);
+      border-radius: 10px; padding: 12px; cursor: pointer;
+      font-size: 0.85rem; color: #d8d2ff; line-height: 1.55;
+      transition: background 0.18s, border 0.18s, box-shadow 0.18s; user-select: none;
+    }
+    .options-group input[type="radio"] { accent-color: #7fb7ff; width: 17px; height: 17px; flex-shrink: 0; margin-top: 2px; }
+    .options-group label:has(input:checked) {
+      background: rgba(127,183,255,0.2); border-color: #a58cff;
+      color: #fff; box-shadow: 0 0 10px rgba(127,183,255,0.3);
+    }
+    .btn-submit {
+      width: 100%; padding: 15px;
+      background: linear-gradient(135deg, #66b9ff, #a58cff);
+      border: none; border-radius: 13px; color: #fff;
+      font-size: 1.05rem; font-weight: 700; cursor: pointer;
+      letter-spacing: 0.4px; box-shadow: 0 4px 22px rgba(127,183,255,0.45);
+      transition: transform 0.15s, box-shadow 0.15s;
+      margin-top: 6px; touch-action: manipulation;
+    }
+    .btn-submit:active { transform: scale(0.98); }
+    .btn-submit:disabled { opacity: 0.55; cursor: not-allowed; transform: none; }
+    #toast {
+      position: fixed; bottom: 24px; left: 50%;
+      transform: translateX(-50%) translateY(16px);
+      background: rgba(6,20,32,0.95); border: 1px solid #7fb7ff;
+      color: #d8d2ff; padding: 11px 22px; border-radius: 12px;
+      font-size: 0.88rem; opacity: 0;
+      transition: opacity 0.3s, transform 0.3s;
+      z-index: 200; text-align: center; max-width: 88vw;
+      box-shadow: 0 0 18px rgba(127,183,255,0.35);
+      pointer-events: none; white-space: nowrap;
+    }
+    #toast.show    { opacity: 1; transform: translateX(-50%) translateY(0); }
+    #toast.error   { border-color: #f44336; color: #ff8a80; }
+    #toast.success { border-color: #4caf50; color: #a5d6a7; }
+  </style>
+</head>
+<body>
+
+<!-- Splash de instrucciones -->
+<div id="splash" onclick="cerrarSplash()">
+  <h2>Cuestionario de Investigación<br>Educación Financiera y Derechos Económicos</h2>
+  <div class="inst-box">
+    <strong>Instrucciones:</strong> Se solicita de manera respetuosa dar lectura detenida a cada uno de los items planteados y responder con la mayor sinceridad y objetividad posible, puesto que no existen respuestas correctas ni incorrectas. La participacion es de caracter voluntario y la informacion suministrada sera tratada con absoluta confidencialidad. Para dar respuesta a cada pregunta, seleccione la opcion que mejor refleje su situacion, opinion o conocimiento. En caso de encontrar algun item de respuesta abierta, exprese su opinion de forma clara y concisa.
+  </div>
+  <p class="toque">Toca en cualquier lugar para comenzar</p>
+</div>
+
+<canvas id="btCanvas"></canvas>
+<div class="container">
+  <header>
+    <h1>Liceo Tecnológico Profesional de Palencia</h1>
+    <span class="counter-badge">Encuestas enviadas: <strong id="counterDisplay">0</strong></span>
+  </header>
+
+
+  <form id="surveyForm">
+    <div class="card">
+      <label class="question">Encuestado por: <span style="font-weight:400;font-size:0.8rem;color:#a9b8ff;">(opcional)</span></label>
+      <input type="text" id="encuestador" placeholder="Nombre del encuestador..." style="width:100%;padding:10px 12px;background:rgba(0,0,0,0.3);border:1px solid rgba(160,150,255,0.35);border-radius:10px;color:#fff;font-size:0.9rem;outline:none;font-family:inherit;"/>
+    </div>
+    <div class="card">
+      <label class="question">Datos del encuestado:</label>
+      <div style="display:flex;gap:14px;flex-wrap:wrap;align-items:center;">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <label style="color:#d8d2ff;font-size:0.9rem;">Edad:</label>
+          <input type="number" id="edad" min="1" max="120" placeholder="Ej: 35" required style="width:80px;padding:8px 10px;background:rgba(0,0,0,0.3);border:1px solid rgba(160,150,255,0.35);border-radius:10px;color:#fff;font-size:0.9rem;outline:none;font-family:inherit;"/>
+        </div>
+        <div style="display:flex;align-items:center;gap:14px;">
+          <label style="color:#d8d2ff;font-size:0.9rem;">Sexo:</label>
+          <label style="display:flex;align-items:center;gap:6px;color:#d8d2ff;font-size:0.9rem;cursor:pointer;">
+            <input type="radio" name="sexo" value="Masculino" style="accent-color:#7fb7ff;width:17px;height:17px;"> Masculino
+          </label>
+          <label style="display:flex;align-items:center;gap:6px;color:#d8d2ff;font-size:0.9rem;cursor:pointer;">
+            <input type="radio" name="sexo" value="Femenino" style="accent-color:#7fb7ff;width:17px;height:17px;"> Femenino
+          </label>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <label class="question"><span class="num">1.</span> ¿Ha recibido alguna vez formación o cursos sobre finanzas personales, ahorro o gestión de deudas?</label>
+      <div class="options-group">
+        <label><input type="radio" name="p1" value="a" required> a) Sí, por iniciativa propia.</label>
+        <label><input type="radio" name="p1" value="b"> b) Sí, a través de la escuela, universidad o trabajo.</label>
+        <label><input type="radio" name="p1" value="c"> c) No, pero me interesaría recibirla.</label>
+      </div>
+    </div>
+    <div class="card">
+      <label class="question"><span class="num">2.</span> ¿Qué tan de acuerdo está con que una buena educación financiera ayuda a evitar abusos por parte de entidades bancarias o comerciales?</label>
+      <div class="options-group">
+        <label><input type="radio" name="p2" value="a" required> a) Totalmente de acuerdo.</label>
+        <label><input type="radio" name="p2" value="b"> b) De acuerdo.</label>
+        <label><input type="radio" name="p2" value="c"> c) En desacuerdo.</label>
+        <label><input type="radio" name="p2" value="d"> d) Totalmente en desacuerdo.</label>
+      </div>
+    </div>
+    <div class="card">
+      <label class="question"><span class="num">3.</span> Antes de firmar un contrato financiero (tarjeta de crédito, préstamo, seguro), ¿usted lee las condiciones y la "letra pequeña"?</label>
+      <div class="options-group">
+        <label><input type="radio" name="p3" value="a" required> a) Siempre leo todo detenidamente antes de firmar.</label>
+        <label><input type="radio" name="p3" value="b"> b) Solo leo los puntos principales (cuotas y plazos).</label>
+        <label><input type="radio" name="p3" value="c"> c) Rara vez o nunca lo leo, confío en la explicación del asesor.</label>
+      </div>
+    </div>
+    <div class="card">
+      <label class="question"><span class="num">4.</span> ¿Conoce usted qué instituciones públicas o leyes protegen sus derechos como consumidor financiero en su país?</label>
+      <div class="options-group">
+        <label><input type="radio" name="p4" value="a" required> a) Sí, conozco la institución y sé cómo acudir a ella.</label>
+        <label><input type="radio" name="p4" value="b"> b) He oído hablar de ellas, pero no sé cómo funcionan ni sus alcances.</label>
+        <label><input type="radio" name="p4" value="c"> c) No, desconozco por completo qué autoridad me protege.</label>
+      </div>
+    </div>
+    <div class="card">
+      <label class="question"><span class="num">5.</span> ¿Sabe cómo calcular el costo total real de un crédito (incluyendo intereses, comisiones y seguros) más allá de la cuota mensual?</label>
+      <div class="options-group">
+        <label><input type="radio" name="p5" value="a" required> a) Sí, sé cómo identificar el costo total.</label>
+        <label><input type="radio" name="p5" value="b"> b) Solo de manera aproximada.</label>
+        <label><input type="radio" name="p5" value="c"> c) No, solo me fijo en el valor de la cuota mensual que debo pagar.</label>
+      </div>
+    </div>
+    <div class="card">
+      <label class="question"><span class="num">6.</span> ¿Ha sido víctima de cobros indebidos, publicidad engañosa o cláusulas abusivas en los últimos dos años?</label>
+      <div class="options-group">
+        <label><input type="radio" name="p6" value="a" required> a) Sí.</label>
+        <label><input type="radio" name="p6" value="b"> b) No.</label>
+        <label><input type="radio" name="p6" value="c"> c) No estoy seguro/a de haberlo sido por falta de conocimiento.</label>
+      </div>
+    </div>
+    <div class="card">
+      <label class="question"><span class="num">7.</span> Si sufrió alguna vulneración a sus derechos económicos, ¿logró presentar un reclamo o defenderse con éxito?</label>
+      <div class="options-group">
+        <label><input type="radio" name="p7" value="a" required> a) Sí, reclamé y se resolvió a mi favor.</label>
+        <label><input type="radio" name="p7" value="b"> b) Lo intenté, pero el proceso fue confuso y abandoné el reclamo.</label>
+        <label><input type="radio" name="p7" value="c"> c) No hice nada porque no sabía cómo defenderme o a dónde acudir.</label>
+        <label><input type="radio" name="p7" value="d"> d) No he estado en esa situación.</label>
+      </div>
+    </div>
+    <div class="card">
+      <label class="question"><span class="num">8.</span> ¿Considera que el desconocimiento de los conceptos financieros básicos incrementa el riesgo de que las personas caigan en situaciones de sobreendeudamiento o fraudes?</label>
+      <div class="options-group">
+        <label><input type="radio" name="p8" value="a" required> a) Alto riesgo.</label>
+        <label><input type="radio" name="p8" value="b"> b) Riesgo moderado.</label>
+        <label><input type="radio" name="p8" value="c"> c) Riesgo bajo.</label>
+        <label><input type="radio" name="p8" value="d"> d) Ningún riesgo.</label>
+      </div>
+    </div>
+    <div class="card">
+      <label class="question"><span class="num">9.</span> En su opinión, ¿quién debería ser el principal responsable de garantizar que los ciudadanos conozcan sus derechos económicos y financieros?</label>
+      <div class="options-group">
+        <label><input type="radio" name="p9" value="a" required> a) El Estado (a través del sistema educativo público).</label>
+        <label><input type="radio" name="p9" value="b"> b) Las propias entidades financieras (bancos y cajas de ahorro).</label>
+        <label><input type="radio" name="p9" value="c"> c) Cada individuo por su propia cuenta e iniciativa.</label>
+      </div>
+    </div>
+    <div class="card">
+      <label class="question"><span class="num">10.</span> ¿De qué manera considera que el gobierno o las instituciones educativas podrían mejorar la educación financiera para ayudar a los ciudadanos a proteger mejor su dinero y sus derechos?</label>
+      <textarea id="p10" placeholder="Escriba su respuesta aquí..." required></textarea>
+    </div>
+    <button type="submit" class="btn-submit" id="submitBtn">Enviar Encuesta</button>
+  </form>
+</div>
+<div id="toast"></div>
+
+<script>
+  // ── Config ────────────────────────────────────────────────────
+  const WEBHOOK_URL = "https://discord.com/api/webhooks/1509219303273005171/Ior5jCd_YttCSrK0r--y4g9iZHYRYf7QFbl0lvK8hOPSbzkK60pcLYzfJS5ey03y7Gbf";
+
+  // ── Fondo corazones celestes ──────────────────────────────────
+  const canvas = document.getElementById("btCanvas");
+  const ctx    = canvas.getContext("2d");
+  const isMobile = window.innerWidth < 600;
+  const COUNT  = isMobile ? 18 : 34;
+
+  function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
+  resize();
+  window.addEventListener("resize", resize);
+
+  function drawHeart(x, y, size, alpha, sway) {
+    ctx.save();
+    ctx.translate(x + sway, y);
+    ctx.globalAlpha = alpha;
+    const g = ctx.createLinearGradient(-size * 0.7, -size * 0.9, size * 0.7, size * 1.1);
+    g.addColorStop(0, `rgba(155,223,255,${alpha})`);
+    g.addColorStop(1, `rgba(112,196,255,${alpha * 0.7})`);
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.moveTo(0, size * 0.35);
+    ctx.bezierCurveTo(-size * 1.05, -size * 0.15, -size * 0.95, -size * 1.05, 0, -size * 0.55);
+    ctx.bezierCurveTo(size * 0.95, -size * 1.05, size * 1.05, -size * 0.15, 0, size * 0.35);
+    ctx.fill();
+
+    ctx.strokeStyle = `rgba(185,235,255,${alpha * 0.65})`;
+    ctx.lineWidth = Math.max(1, size * 0.07);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  class Heart {
+    constructor() { this.init(true); }
+    init(rnd=false) {
+      this.x = Math.random() * canvas.width;
+      this.y = rnd ? Math.random() * canvas.height : canvas.height + 40;
+      this.size = 6 + Math.random() * 14;
+      this.vy = 0.28 + Math.random() * 0.75;
+      this.alpha = 0.22 + Math.random() * 0.55;
+      this.fade = 0.001 + Math.random() * 0.0022;
+      this.wave = Math.random() * Math.PI * 2;
+      this.waveSpeed = 0.012 + Math.random() * 0.02;
+      this.swayAmp = 4 + Math.random() * 10;
+    }
+    update() {
+      this.y -= this.vy;
+      this.alpha -= this.fade;
+      this.wave += this.waveSpeed;
+      if (this.y < -50 || this.alpha <= 0) this.init(false);
+    }
+    draw() {
+      const sway = Math.sin(this.wave) * this.swayAmp;
+      drawHeart(this.x, this.y, this.size, this.alpha, sway);
+    }
+  }
+
+  const hearts = Array.from({length:COUNT},()=>new Heart());
+  function animate() {
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    hearts.forEach((h)=>{h.update();h.draw();});
+    requestAnimationFrame(animate);
+  }
+  animate();
+
+  // ── Contador — lee el total real desde Google Sheets ─────────────
+  const SHEET_URL = "https://script.google.com/macros/s/AKfycbw7N8C9eDzD0KzmA__YScoSFO9hcVkWR07MAm7QaxbM7rhXhfniIKAaA9Xfk8LTWpkIVA/exec";
+  let encuestaNum = 0;
+
+  async function actualizarContador() {
+    try {
+      const res = await fetch(SHEET_URL + "?action=read");
+      const json = await res.json();
+      if (json.ok) {
+        encuestaNum = json.rows.length;
+        document.getElementById("counterDisplay").textContent = encuestaNum;
+      }
+    } catch(e) {
+      // Si falla la red, muestra 0
+      document.getElementById("counterDisplay").textContent = 0;
+    }
+  }
+  actualizarContador(); // ejecutar al cargar la página
+
+  // Mantén presionado el contador 3 segundos para resetearlo a 0
+  let holdTimer = null;
+  document.getElementById("counterDisplay").addEventListener("touchstart", function(){
+    holdTimer = setTimeout(function(){
+      if(confirm("¿Resetear contador a 0?")){
+        localStorage.setItem("encuestaCount","0");
+        encuestaNum = 0;
+        document.getElementById("counterDisplay").textContent = 0;
+      }
+    }, 3000);
+  });
+  document.getElementById("counterDisplay").addEventListener("touchend", function(){ clearTimeout(holdTimer); });
+  document.getElementById("counterDisplay").addEventListener("mousedown", function(){
+    holdTimer = setTimeout(function(){
+      if(confirm("¿Resetear contador a 0?")){
+        localStorage.setItem("encuestaCount","0");
+        encuestaNum = 0;
+        document.getElementById("counterDisplay").textContent = 0;
+      }
+    }, 3000);
+  });
+  document.getElementById("counterDisplay").addEventListener("mouseup", function(){ clearTimeout(holdTimer); });
+
+  // ── Splash ────────────────────────────────────────────────────
+  function cerrarSplash() {
+    document.getElementById("splash").classList.add("oculto");
+  }
+
+  // ── Toast ─────────────────────────────────────────────────────
+  function showToast(msg, type="") {
+    const t=document.getElementById("toast");
+    t.textContent=msg; t.className="show "+type;
+    setTimeout(()=>{t.className="";},3500);
+  }
+
+  // ── Textos respuestas ─────────────────────────────────────────
+  const p3Map = {
+    a: "a) Sí, considero que saber manejar el dinero nos da las herramientas necesarias para exigir tratos justos y evitar que nos cobren de más de forma ilegal.",
+    b: "b) Lo he pensado un poco, pero creo que la educación financiera sirve más para ahorrar que para defender derechos ante las instituciones.",
+    c: "c) No lo había analizado de esa manera, ya que suelo ver las finanzas de la casa y los derechos humanos como temas totalmente separados."
+  };
+  const p7Map = {
+    a: "a) Enseñar matemáticas financieras a los estudiantes.",
+    b: "b) Medir el impacto social en la comunidad educativa sobre el papel de la educación financiera como medio de protección a los derechos económicos.",
+    c: "c) Evaluar el desempeño de los maestros del taller."
+  };
+
+  // Genera texto con las 3 opciones, la seleccionada entre asteriscos para Discord
+  function multiOpciones(mapa, seleccion) {
+    return Object.entries(mapa).map(([k,v]) =>
+      k === seleccion ? "✅ " + v : "▫️ " + v
+    ).join("\n");
+  }
+
+  // ── Google Sheets ─────────────────────────────────────────────
+  async function sendToSheets(data) {
+    await fetch(SHEET_URL, {
+      method: "POST",
+      mode: "no-cors",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data)
+    });
+    // Esperar un momento para que el Sheet procese la fila
+    await new Promise(r => setTimeout(r, 1500));
+    // Leer el total actualizado
+    const res2 = await fetch(SHEET_URL + "?action=read");
+    const json2 = await res2.json();
+    if (!json2.ok) throw new Error("Error leyendo Sheet");
+    return json2.rows.length;
+  }
+
+  // ── Discord ───────────────────────────────────────────────────
+  async function sendToDiscord(data, num) {
+    const payload = {
+      embeds: [{
+        description: `*Encuesta N.° ${num} recibida correctamente.*\n**Encuestado por:** ${data.encuestador}`,
+        color: 0xA58CFF,
+        footer: { text: new Date().toLocaleString("es-GT") }
+      }]
+    };
+    const res = await fetch(WEBHOOK_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) throw new Error(`Discord ${res.status}`);
+  }
+
+  // ── Submit ────────────────────────────────────────────────────
+  document.getElementById("surveyForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const btn = document.getElementById("submitBtn");
+    btn.disabled = true;
+    btn.textContent = "Enviando...";
+
+    try {
+      const g = (n) => document.querySelector(`input[name="${n}"]:checked`).value;
+
+      // Validar edad y sexo
+      const edadVal = document.getElementById("edad").value.trim();
+      const sexoVal = document.querySelector('input[name="sexo"]:checked')?.value;
+      if (!edadVal) { showToast("Por favor ingresa la edad.", "error"); btn.disabled=false; btn.textContent="Enviar Encuesta"; return; }
+      if (!sexoVal) { showToast("Por favor selecciona el sexo.", "error"); btn.disabled=false; btn.textContent="Enviar Encuesta"; return; }
+
+      const data = {
+        encuestador: document.getElementById("encuestador").value.trim() || "—",
+        edad: edadVal,
+        sexo: sexoVal,
+        p1: g("p1"), p2: g("p2"), p3: g("p3"), p4: g("p4"), p5: g("p5"),
+        p6: g("p6"), p7: g("p7"), p8: g("p8"), p9: g("p9"),
+        p10: document.getElementById("p10").value.trim()
+      };
+
+      encuestaNum++;
+
+      // Enviar a Google Sheets — el servidor asigna el número real
+      const numReal = await sendToSheets(data);
+      encuestaNum = numReal;
+
+      // Enviar resumen a Discord con el número real
+      await sendToDiscord(data, numReal);
+
+      localStorage.setItem("encuestaCount", encuestaNum);
+      document.getElementById("counterDisplay").textContent = encuestaNum;
+      showToast(`Encuesta ${encuestaNum} enviada`, "success");
+      e.target.reset();
+    } catch (err) {
+      console.error(err);
+      showToast("Error al enviar. Revisa F12.", "error");
+      encuestaNum--;
+    } finally {
+      btn.disabled = false;
+      btn.textContent = "Enviar Encuesta";
+    }
+  });
+</script>
+</body>
+</html>
